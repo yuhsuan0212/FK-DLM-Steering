@@ -10,9 +10,36 @@ defaults:
   - config  # Refers to 'config.yaml' inside 'mdlm/configs'
   - _self_
 
+backend: mdlm  # mdlm / llada
+
 sampling:
   prompt_file: null # prompt path, e.g. evaluation/pplm_discrim_prompts_orig.jsonl
   predictor: ddpm # ddpm_cache not supported right now
+
+prompts:
+  source: local_json # prompt_file / local_json / hf_dataset
+  local_prompts: outputs/merged_high_toxicity_results.json
+  dataset_name: allenai/real-toxicity-prompts
+  dataset_split: train
+  num_samples: null # null = use every prompt in local_prompts / dataset / prompt file
+
+llada_model:
+  name_or_path: GSAI-ML/LLaDA-8B-Base
+  mode: base # base only in FK v1
+  max_prompt_length: 1024
+  mask_id: 126336
+  trust_remote_code: true
+  torch_dtype: bfloat16
+  flash_attention: false
+
+llada_generation:
+  gen_length: 128
+  block_length: 32
+  temperature: 0.3
+  cfg_scale: 0.0
+  remasking: low_confidence # low_confidence / random
+  logits_eos_inf: false
+  confidence_eos_eot_inf: false
 
 fk_steering:
   potential_type: 'diff' # see fkd_class.py for options
@@ -21,6 +48,9 @@ fk_steering:
   reward_fn: 'toxicity' # see reward_functions.py for options # WARNING: toxicity guidance leads to potentially harmful outputs
   reward_label: 'positive'
   reward_trim_length: 1024 # Number of tokens to consider for reward computation, if < seq leq considers first reward_trim_length tokens
+  adaptation:
+    initial_reward_seeding: true # seed particle rewards before FK resampling; false starts from reward_min_value=0
+    reward_fill_mode: prefix_only # [prefix_only, full_fill] reward x0 completion policy for LLaDA backend
   resample_frequency: 20 # -1 for no resampling
   num_x0_samples: 4
   resample_start_step: -1

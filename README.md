@@ -2,11 +2,16 @@
 
 This repository is a standalone extraction of the `discrete_diffusion/` component from
 [Fk-Diffusion-Steering](https://github.com/zacharyhorvitz/Fk-Diffusion-Steering).
-It focuses on inference-time FK Steering for MDLM-style discrete text diffusion models.
+It focuses on inference-time FK Steering for discrete text diffusion / masked language models.
+
+The sampling entrypoint supports two backends:
+
+- `backend=mdlm`: the original MDLM FK pipeline
+- `backend=llada`: a LLaDA semi-AR FK pipeline that uses LLaDA baseline generation as the proposal mechanism
 
 Compared with the original paper repository, this repo keeps only the code needed for:
 
-- FK-steered sampling with MDLM checkpoints
+- FK-steered sampling with MDLM checkpoints and the LLaDA backend
 - reward-based control for text generation
 - evaluation of generated samples
 
@@ -15,13 +20,16 @@ If you are looking for the full paper codebase, including text-to-image experime
 
 ## What This Repo Contains
 
-- `generate_with_fk.py`: entry point for prompt-conditioned generation with FK Steering
+- `generate_with_fk.py`: entry point for prompt-conditioned generation with FK Steering (supports both backends)
 - `fk_diffusion.py`: MDLM wrapper with FK-steered sampling logic
+- `fk_llada.py`: LLaDA semi-AR wrapper with FK Steering on top of x0 completions
 - `fkd_class.py`: particle resampling and potential computation
 - `reward_functions.py`: reward functions such as toxicity, CoLA, GPT-2 perplexity, and InfiniGram perplexity
 - `configs/fk_steering_config.yaml`: Hydra config for sampling and steering
 - `evaluation/`: scripts for converting outputs and computing metrics
-- `scripts/run_*.sh`: experiment scripts used for common reward setups
+- `scripts/run_*.sh`: experiment scripts used for common reward setups (including `run_toxicity_reward_llada*.sh` for the LLaDA backend)
+- `utils/`: distributed-run helpers (filesystem barrier, sharding, logging, dtype helpers)
+- `summary_utils.py` / `eval.py`: post-run summarisation and evaluation entrypoints
 - `mdlm/`: upstream MDLM code as a git submodule
 
 ## Installation
@@ -32,7 +40,7 @@ If you are cloning this repository for the first time:
 
 ```bash
 git clone --recursive https://github.com/yuhsuan0212/FK-DLM-Steering
-cd Fk-DLM-Steering
+cd FK-DLM-Steering
 ```
 
 If you already cloned the repo without submodules:
@@ -64,6 +72,23 @@ Available extras:
 The `mdlm/` submodule currently points to [https://github.com/zacharyhorvitz/mdlm.git](https://github.com/zacharyhorvitz/mdlm.git).
 
 All commands below assume you are running them from the repository root.
+
+## Backends
+
+`generate_with_fk.py` selects a backend via the `backend` config key:
+
+- `backend=mdlm` — runs the original MDLM FK pipeline. Requires an MDLM checkpoint
+  (`eval.checkpoint_path`).
+- `backend=llada` — runs the LLaDA semi-AR FK pipeline. Configured via the
+  `llada_model` and `llada_generation` sections of `configs/fk_steering_config.yaml`,
+  and supports loading prompts from `prompt_file`, `local_json`, or `hf_dataset`
+  via the `prompts` section.
+
+Current LLaDA backend limitations:
+
+- base mode only (`llada_model.mode=base`)
+- semi-AR only (no CTMC support)
+- no parity with the extra control methods in `safety_evaluation`
 
 ## InfiniGram Setup
 
@@ -163,4 +188,4 @@ In other words:
 - FK Steering codebase and project framing from
   [Fk-Diffusion-Steering](https://github.com/zacharyhorvitz/Fk-Diffusion-Steering)
 - discrete diffusion backbone from
-  [MDLM](https://github.com/kuleshov-group/mdlm)
+  [MDLM](https://github.com/kuleshov-group/mdlm) and [LLaDA](https://github.com/ML-GSAI/LLaDA)
