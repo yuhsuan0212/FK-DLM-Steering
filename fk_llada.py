@@ -322,10 +322,6 @@ class FKLLaDA:
         logits_with_noise = add_gumbel_noise(logits, temperature=cfg.temperature)
         x0_update = torch.argmax(logits_with_noise, dim=-1)
 
-        if cfg.confidence_eos_eot_inf:
-            logits_with_noise[:, :, 126081] = -torch.inf
-            logits_with_noise[:, :, 126348] = -torch.inf
-
         if cfg.remasking == "low_confidence":
             probs = F.softmax(logits, dim=-1)
             x0_p = torch.gather(
@@ -335,6 +331,15 @@ class FKLLaDA:
             x0_p = torch.rand((x.shape[0], x.shape[1]), device=x.device)
         else:
             raise NotImplementedError(cfg.remasking)
+
+        if cfg.confidence_eos_eot_inf:
+            # LLaDA Appendix B.4: force the unmasking *confidence* of EOS (126081)
+            # and EoT (126348) to -inf so they are never committed early. Applied to
+            # the confidence source (x0_p) directly. The previous version mutated a
+            # throwaway noised-logits tensor that was never read again, so the flag
+            # was a silent no-op.
+            eos_eot = (x0_update == 126081) | (x0_update == 126348)
+            x0_p = torch.where(eos_eot, torch.full_like(x0_p, -torch.inf), x0_p)
 
         x0_p[:, :block_start] = -torch.inf
         x0_p[:, block_end:] = -torch.inf

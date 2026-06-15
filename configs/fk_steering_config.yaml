@@ -53,4 +53,3 @@ fk_steering:
     reward_fill_mode: prefix_only # [prefix_only, full_fill] reward x0 completion policy for LLaDA backend
   resample_frequency: 20 # -1 for no resampling
   num_x0_samples: 4
-  resample_start_step: -1

@@ -27,7 +27,10 @@ If you are looking for the full paper codebase, including text-to-image experime
 - `reward_functions.py`: reward functions such as toxicity, CoLA, GPT-2 perplexity, and InfiniGram perplexity
 - `configs/fk_steering_config.yaml`: Hydra config for sampling and steering
 - `evaluation/`: scripts for converting outputs and computing metrics
-- `scripts/run_*.sh`: experiment scripts used for common reward setups (including `run_toxicity_reward_llada*.sh` for the LLaDA backend)
+- `scripts/run_*.sh`: experiment scripts for common reward setups.
+  MDLM presets: `run_toxicity_reward.sh`, `run_gpt2_reward.sh`,
+  `run_cola_reward.sh`, `run_infinigram_reward.sh`.
+  LLaDA-backend presets: `run_toxicity_reward_llada.sh`, `run_gpt2_reward_llada.sh`.
 - `utils/`: distributed-run helpers (filesystem barrier, sharding, logging, dtype helpers)
 - `summary_utils.py` / `eval.py`: post-run summarisation and evaluation entrypoints
 - `mdlm/`: upstream MDLM code as a git submodule
@@ -90,6 +93,38 @@ Current LLaDA backend limitations:
 - semi-AR only (no CTMC support)
 - no parity with the extra control methods in `safety_evaluation`
 
+### LLaDA configuration
+
+Key knobs (defaults in `configs/fk_steering_config.yaml`):
+
+- `llada_model.name_or_path` — HF model id (default `GSAI-ML/LLaDA-8B-Base`),
+  `llada_model.mask_id` (default `126336`), `llada_model.torch_dtype`,
+  `llada_model.flash_attention`, `llada_model.max_prompt_length`.
+- `llada_generation.gen_length` / `block_length` — semi-AR block decoding shape
+  (defaults `128` / `32`, i.e. `4` blocks).
+- `llada_generation.temperature` — Gumbel sampling temperature (default `0.3`); also
+  used for the FK reward x0 completions.
+- `llada_generation.remasking` — `low_confidence` (default) or `random`.
+- `llada_generation.logits_eos_inf` / `confidence_eos_eot_inf` — LLaDA Appendix B.4
+  EOS/EoT suppression toggles (both default `false`).
+- `fk_steering.adaptation.reward_fill_mode` — how the intermediate FK reward fills
+  masked positions: `prefix_only` (default; score only the denoised prefix, future
+  blocks stay `[MASK]`) or `full_fill` (fill every masked position, closer to the
+  original discrete-FK reward).
+- `fk_steering.adaptation.initial_reward_seeding` — seed `population_rs` with the
+  initial state's reward before the first resample (default `true`); helps `diff`/
+  negative-log-prob rewards where starting from `0` suppresses early steering.
+
+Requirements / gotchas:
+
+- `loader.eval_batch_size=1` is **required** (the LLaDA backend processes one prompt
+  at a time; the config default is resolved from GPU count and is usually not `1`).
+- `sampling.steps` must be divisible by `gen_length / block_length` (the number of
+  blocks). With the defaults that means a multiple of `4`; `steps=128` (one token per
+  step) is the natural LLaDA setting.
+- MDLM-only overrides (`eval.checkpoint_path`, `data=...`, `model.length`,
+  `backbone=...`, `sampling.predictor`) are not needed for `backend=llada`.
+
 ## InfiniGram Setup
 
 If you want to use InfiniGram-based rewards, download an index locally and set
@@ -113,15 +148,22 @@ The easiest way to reproduce the provided setups is to run one of the experiment
 uv run bash scripts/run_gpt2_reward.sh
 ```
 
-Other presets:
+MDLM presets:
 
 - `uv run bash scripts/run_cola_reward.sh`
 - `uv run bash scripts/run_toxicity_reward.sh`
 - `uv run bash scripts/run_infinigram_reward.sh`
 
+LLaDA-backend presets (no MDLM checkpoint needed):
+
+- `uv run bash scripts/run_toxicity_reward_llada.sh`
+- `uv run bash scripts/run_gpt2_reward_llada.sh`
+
 These scripts call `generate_with_fk.py` with different FK Steering configurations and save outputs under `outputs/.../fk_steering/sample_evaluation/...`.
 
-If you want to launch a single run manually, a minimal example looks like:
+### MDLM manual run
+
+If you want to launch a single MDLM run manually, a minimal example looks like:
 
 ```bash
 uv run python generate_with_fk.py \
@@ -143,6 +185,34 @@ uv run python generate_with_fk.py \
   fk_steering.resample_frequency=20 \
   fk_steering.num_x0_samples=4 \
   sampling.prompt_file=$(pwd)/evaluation/pplm_discrim_prompts_orig.jsonl
+```
+
+### LLaDA manual run
+
+The LLaDA backend drops the MDLM checkpoint/data/backbone overrides and instead
+configures the `llada_*` sections. Note `backend=llada` and `loader.eval_batch_size=1`:
+
+```bash
+uv run python generate_with_fk.py \
+  backend=llada \
+  seed=1234 \
+  loader.eval_batch_size=1 \
+  sampling.steps=128 \
+  sampling.num_sample_batches=1 \
+  prompts.source=prompt_file \
+  sampling.prompt_file=$(pwd)/evaluation/pplm_discrim_prompts_orig.jsonl \
+  llada_model.name_or_path=GSAI-ML/LLaDA-8B-Base \
+  llada_generation.gen_length=128 \
+  llada_generation.block_length=32 \
+  llada_generation.temperature=0.3 \
+  fk_steering.potential_type='diff' \
+  fk_steering.k_particles=4 \
+  fk_steering.lmbda=10.0 \
+  fk_steering.reward_fn='toxicity' \
+  fk_steering.reward_label='positive' \
+  fk_steering.reward_trim_length=100 \
+  fk_steering.resample_frequency=20 \
+  fk_steering.num_x0_samples=4
 ```
 
 ## Evaluation

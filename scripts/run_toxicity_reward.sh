@@ -21,7 +21,6 @@ for seed in 1234 2345 3456; do
 		fk_steering.reward_label='positive' \
 		fk_steering.resample_frequency=-1 \
 		fk_steering.num_x0_samples=1 \
-		fk_steering.resample_start_step=-1 \
 		sampling.prompt_file=$(pwd)/evaluation/pplm_discrim_prompts_orig.jsonl
 
 	# BoN 4 particles
@@ -43,7 +42,6 @@ for seed in 1234 2345 3456; do
 		fk_steering.reward_label='positive' \
 		fk_steering.resample_frequency=-1 \
 		fk_steering.num_x0_samples=4 \
-		fk_steering.resample_start_step=-1 \
 		sampling.prompt_file=$(pwd)/evaluation/pplm_discrim_prompts_orig.jsonl
 
 	# FK 4 particles
@@ -65,7 +63,6 @@ for seed in 1234 2345 3456; do
 		fk_steering.reward_label='positive' \
 		fk_steering.resample_frequency=20 \
 		fk_steering.num_x0_samples=4 \
-		fk_steering.resample_start_step=-1 \
 		sampling.prompt_file=$(pwd)/evaluation/pplm_discrim_prompts_orig.jsonl
 
 	# BoN 8 particles
@@ -87,7 +84,6 @@ for seed in 1234 2345 3456; do
 		fk_steering.reward_label='positive' \
 		fk_steering.resample_frequency=-1 \
 		fk_steering.num_x0_samples=4 \
-		fk_steering.resample_start_step=-1 \
 		sampling.prompt_file=$(pwd)/evaluation/pplm_discrim_prompts_orig.jsonl
 
 	# FK 8 particles
@@ -109,7 +105,6 @@ for seed in 1234 2345 3456; do
 		fk_steering.reward_label='positive' \
 		fk_steering.resample_frequency=20 \
 		fk_steering.num_x0_samples=4 \
-		fk_steering.resample_start_step=-1 \
 		sampling.prompt_file=$(pwd)/evaluation/pplm_discrim_prompts_orig.jsonl
 
 
@@ -132,7 +127,6 @@ for seed in 1234 2345 3456; do
 		fk_steering.reward_label='positive' \
 		fk_steering.resample_frequency=20 \
 		fk_steering.num_x0_samples=16 \
-		fk_steering.resample_start_step=-1 \
 		sampling.prompt_file=$(pwd)/evaluation/pplm_discrim_prompts_orig.jsonl
 
 
@@ -155,7 +149,6 @@ for seed in 1234 2345 3456; do
 		fk_steering.reward_label='positive' \
 		fk_steering.resample_frequency=20 \
 		fk_steering.num_x0_samples=16 \
-		fk_steering.resample_start_step=-1 \
 		sampling.prompt_file=$(pwd)/evaluation/pplm_discrim_prompts_orig.jsonl
 
 done
